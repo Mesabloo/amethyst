@@ -15,7 +15,10 @@ defaultEnv = Map.fromList
     [ ("+", VNative addE)
     , ("=", VNative assE)
     , ("-", VNative subE)
-    , ("swap", VNative swapE) ]
+    , ("swap", VNative swapE)
+    , ("dup", VNative dupE)
+    , ("pop", VNative popE)
+    , (">=", VNative goeE) ]
 
 pop :: Sem' Value
 pop = gets _stack >>= \case
@@ -51,3 +54,18 @@ swapE = do
     t1 <- pop
     t2 <- pop
     (t2 <$) . modify $ \st -> st { _stack = push t2 (push t1 (_stack st)) }
+
+dupE :: Sem' Value
+dupE = do
+    t <- pop
+    (t <$) . modify $ \st -> st { _stack = push t (push t (_stack st)) }
+
+popE :: Sem' Value
+popE = pop
+
+goeE :: Sem' Value
+goeE = do
+    t1 <- extract @Integer =<< pop
+    t2 <- extract @Integer =<< pop
+    let val = VAtom (EInt (if t2 >= t1 then 1 else 0))
+    (val <$) . modify $ \st -> st { _stack = push val (_stack st) }
