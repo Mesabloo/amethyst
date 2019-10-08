@@ -1,7 +1,5 @@
 {-# OPTIONS_GHC -fplugin=Polysemy.Plugin #-}
-{-# LANGUAGE DataKinds, ExistentialQuantification, GADTs
-           , RankNTypes, LambdaCase, FlexibleContexts, TypeApplications
-           , OverloadedStrings, ScopedTypeVariables #-}
+{-# LANGUAGE DataKinds, LambdaCase, FlexibleContexts, TypeApplications, OverloadedStrings #-}
 
 module Amethyst.Interpreter.Evaluator where
 
@@ -39,9 +37,7 @@ eval (x:xs) =
                 in (val <$) . modify $ \st -> st { _stack = push val (_stack st) }
             EId Nothing name ->
                 gets (Map.lookup name . _env) >>= \case
-                    Just x -> do
-                        v <- evalVal x
-                        (v <$) . modify $ \st -> st { _stack = push v (_stack st) }
+                    Just x -> evalVal x
                     Nothing -> throw @EvalError ("Function `" <> Text.unpack name <> "` not found.")
             EBlock es ->
                 let b = VBlock es
@@ -51,14 +47,14 @@ eval (x:xs) =
 evalVal :: Value -> Sem' Value
 evalVal (VNative f) = f
 evalVal (VBlock vs) = eval vs
-evalVal v = pure v
+evalVal v = (v <$) . modify $ \st -> st { _stack = push v (_stack st) }
 
 top :: Member (Error String) r => [Value] -> Sem r Value
 top [] = throw @EvalError "Empty stack when using `top`."
 top (x:xs) = pure x
 
 push :: Value -> [Value] -> [Value]
-push = (:)
+push v s = (v : s)
 
 ----------------------------------------------------------------------
 
