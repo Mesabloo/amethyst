@@ -1,5 +1,5 @@
 {-# OPTIONS_GHC -fplugin=Polysemy.Plugin #-}
-{-# LANGUAGE DataKinds, LambdaCase, FlexibleContexts, TypeApplications, OverloadedStrings #-}
+{-# LANGUAGE DataKinds, LambdaCase, FlexibleContexts, TypeApplications, OverloadedStrings, GADTs #-}
 
 module Amethyst.Interpreter.Evaluator where
 
@@ -33,7 +33,7 @@ eval (x:xs) =
                 let val = VAtom a
                 in (val <$) . modify $ \st -> st { _stack = push val (_stack st) }
             EId (Just _) name ->
-                let val = VId name
+                let val = VId (Id name)
                 in (val <$) . modify $ \st -> st { _stack = push val (_stack st) }
             EId Nothing name ->
                 gets (Map.lookup name . _env) >>= \case
@@ -49,12 +49,9 @@ evalVal (VNative f) = f
 evalVal (VBlock vs) = eval vs
 evalVal v = (v <$) . modify $ \st -> st { _stack = push v (_stack st) }
 
-top :: Member (Error String) r => [Value] -> Sem r Value
+top :: [Value] -> Sem' Value
 top [] = throw @EvalError "Empty stack when using `top`."
 top (x:xs) = pure x
-
-push :: Value -> [Value] -> [Value]
-push v s = (v : s)
 
 ----------------------------------------------------------------------
 
@@ -64,8 +61,8 @@ runEval sem = sem & runError & runState initEvalState & runM
 ----------------------------------------------------------------------
 
 ifE :: Sem' Value
-ifE = gets _stack >>= \case
-    cond:_then:_else:xs -> do
-        cond' <- extractInt cond
-        modify $ \st -> st { _stack = xs }
-        eval =<< if cond' /= 0 then extractBlock _then else extractBlock _else
+ifE = do
+    cond' <- extract @Integer =<< pop
+    _then <- pop
+    _else <- pop
+    eval =<< extract @Block (if cond' /= 0 then _then else _else)
