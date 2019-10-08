@@ -26,6 +26,7 @@ dependencies:
 - polysemy-plugin
 - text
 - containers
+- mtl
 
 library:
   source-dirs: src

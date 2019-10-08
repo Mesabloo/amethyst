@@ -9,6 +9,7 @@ import Amethyst.Language.Parser
 import Polysemy.Error
 import Polysemy.State
 import Control.Monad
+import Control.Lens
 
 defaultEnv :: Map.Map Text.Text Value
 defaultEnv = Map.fromList
@@ -23,8 +24,8 @@ defaultEnv = Map.fromList
     , ("<=", VNative loeE) ]
 
 pop :: Sem' Value
-pop = gets _stack >>= \case
-    x:xs -> (x <$) . modify $ \st -> st { _stack = xs }
+pop = use stack >>= \case
+    x:xs -> x <$ (stack .= xs)
     []   -> throw @EvalError "Cannot pop an empty stack."
 
 push :: Value -> [Value] -> [Value]
@@ -36,31 +37,31 @@ addE = do
     i1 <- extract @Integer =<< pop
     i2 <- extract @Integer =<< pop
     let val = VAtom (EInt (i2 + i1))
-    (val <$) . modify $ \st -> st { _stack = push val (_stack st) }
+    val <$ (stack %= push val)
 
 assE :: Sem' Value
 assE = do
     e1 <- pop
     Id i <- extract @Id =<< pop
-    (e1 <$) . modify $ \st -> st { _env = Map.insert i e1 (_env st) }
+    e1 <$ (env %= Map.insert i e1)
 
 subE :: Sem' Value
 subE = do
     i1 <- extract @Integer =<< pop
     i2 <- extract @Integer =<< pop
     let val = VAtom (EInt (i2 - i1))
-    (val <$) . modify $ \st -> st { _stack = push val (_stack st) }
+    val <$ (stack %= push val)
 
 swapE :: Sem' Value
 swapE = do
     t1 <- pop
     t2 <- pop
-    (t2 <$) . modify $ \st -> st { _stack = push t2 (push t1 (_stack st)) }
+    t2 <$ (stack %= (push t2 . push t1))
 
 dupE :: Sem' Value
 dupE = do
     t <- pop
-    (t <$) . modify $ \st -> st { _stack = push t (push t (_stack st)) }
+    t <$ (stack %= (push t . push t))
 
 popE :: Sem' Value
 popE = pop
@@ -70,18 +71,18 @@ goeE = do
     t1 <- extract @Integer =<< pop
     t2 <- extract @Integer =<< pop
     let val = VAtom (EInt (if t2 >= t1 then 1 else 0))
-    (val <$) . modify $ \st -> st { _stack = push val (_stack st) }
+    val <$ (stack %= push val)
 
 mulE :: Sem' Value
 mulE = do
     t1 <- extract @Integer =<< pop
     t2 <- extract @Integer =<< pop
     let val = VAtom (EInt (t2 * t1))
-    (val <$) . modify $ \st -> st { _stack = push val (_stack st) }
+    val <$ (stack %= push val)
 
 loeE :: Sem' Value
 loeE = do
     t1 <- extract @Integer =<< pop
     t2 <- extract @Integer =<< pop
     let val = VAtom (EInt (if t2 <= t1 then 1 else 0))
-    (val <$) . modify $ \st -> st { _stack = push val (_stack st) }
+    val <$ (stack %= push val)

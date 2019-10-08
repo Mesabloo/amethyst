@@ -1,5 +1,6 @@
 {-# LANGUAGE DataKinds, GADTs, TypeApplications, ScopedTypeVariables
-           , FlexibleInstances #-}
+           , FlexibleInstances, TemplateHaskell, MultiParamTypeClasses
+           , FlexibleContexts, UndecidableInstances, TypeOperators #-}
 
 module Amethyst.Interpreter.Types where
 
@@ -11,16 +12,8 @@ import qualified Data.Text as Text
 import qualified Data.Map as Map
 import Amethyst.Language.Parser
 import Data.Typeable
-
-data EvalState = EvalState
-    { _stack :: [Value]
-    , _env :: Map.Map Text.Text Value }
-
-data Value where
-    VAtom :: Lit -> Value
-    VId :: Id -> Value
-    VBlock :: [Expr] -> Value
-    VNative :: Sem' Value -> Value
+import Control.Lens
+import Control.Monad.State (MonadState(..))
 
 type EvalError = String
 type Block = [Expr]
@@ -28,6 +21,17 @@ newtype Id = Id Text.Text
 
 type Sem' = Sem '[Error EvalError, State EvalState, Embed IO]
 type Eval a = Block -> Sem' a
+
+data Value
+    = VAtom Lit
+    | VId Id
+    | VBlock Block
+    | VNative (Sem' Value)
+
+data EvalState = EvalState
+    { _stack :: [Value]
+    , _env :: Map.Map Text.Text Value }
+makeLenses ''EvalState
 
 -----------------------------------------------------------------------
 
@@ -75,3 +79,9 @@ instance Show Value where
 
 instance Show EvalState where
     show (EvalState st e) = show st <> "\n" <> show e
+
+--------------------------------------------------------------------------------
+
+instance MonadState EvalState Sem' where
+    get = Polysemy.State.get
+    put = Polysemy.State.put

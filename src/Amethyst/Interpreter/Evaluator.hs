@@ -14,7 +14,7 @@ import Control.Monad
 import Data.Function ((&))
 import Amethyst.Interpreter.Stdlib
 import Amethyst.Interpreter.Types
-import Debug.Trace
+import Control.Lens
 
 initEvalState :: EvalState
 initEvalState = EvalState
@@ -26,35 +26,30 @@ initEvalState = EvalState
 ---------------------------------------------------------------------
 
 eval :: Eval Value
-eval [] = join (gets (top . _stack))
+eval [] = join (stack `uses` top)
 eval (x:xs) =
     let exec = \case
             EAtom a ->
-                let val = VAtom a
-                in (val <$) . modify $ \st -> st { _stack = push val (_stack st) }
+                let val = VAtom a in val <$ (stack %= push val)
             EId (Just _) name ->
-                let val = VId (Id name)
-                in (val <$) . modify $ \st -> st { _stack = push val (_stack st) }
+                let val = VId (Id name) in val <$ (stack %= push val)
             EId Nothing name ->
-                gets (Map.lookup name . _env) >>= \case
+                env `uses` Map.lookup name >>= \case
                     Just x -> evalVal x
                     Nothing -> throw @EvalError ("Function `" <> Text.unpack name <> "` not found.")
             EBlock es ->
-                let b = VBlock es
-                in (b <$) . modify $ \st -> st { _stack = push b (_stack st) }
+                let b = VBlock es in b <$ (stack %= push b)
     in foldl ((. exec) . (*>)) (exec x) xs
 
 evalVal :: Value -> Sem' Value
 evalVal (VNative f) = f
 evalVal (VBlock vs) = local (eval vs)
-evalVal v = (v <$) . modify $ \st -> st { _stack = push v (_stack st) }
+evalVal v = v <$ (stack %= push v)
 
 local :: Sem' a -> Sem' a
 local action = do
-    e <- gets _env
-    res <- action
-    modify $ \st -> st { _env = e }
-    pure res
+    e <- use env
+    action <* (env .= e)
 
 top :: [Value] -> Sem' Value
 top [] = throw @EvalError "Empty stack when using `top`."
@@ -62,8 +57,8 @@ top (x:xs) = pure x
 
 ----------------------------------------------------------------------
 
-runEval :: Sem' Value -> IO (EvalState, Either EvalError Value)
-runEval sem = sem & runError & runState initEvalState & runM
+runEval :: Sem' Value -> EvalState -> IO (EvalState, Either EvalError Value)
+runEval sem s = sem & runError & runState s & runM
 
 ----------------------------------------------------------------------
 
