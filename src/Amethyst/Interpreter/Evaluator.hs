@@ -46,8 +46,15 @@ eval (x:xs) =
 
 evalVal :: Value -> Sem' Value
 evalVal (VNative f) = f
-evalVal (VBlock vs) = eval vs
+evalVal (VBlock vs) = local (eval vs)
 evalVal v = (v <$) . modify $ \st -> st { _stack = push v (_stack st) }
+
+local :: Sem' a -> Sem' a
+local action = do
+    e <- gets _env
+    res <- action
+    modify $ \st -> st { _env = e }
+    pure res
 
 top :: [Value] -> Sem' Value
 top [] = throw @EvalError "Empty stack when using `top`."
