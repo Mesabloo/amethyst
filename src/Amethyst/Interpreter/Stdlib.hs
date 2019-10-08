@@ -18,7 +18,8 @@ defaultEnv = Map.fromList
     , ("swap", VNative swapE)
     , ("dup", VNative dupE)
     , ("pop", VNative popE)
-    , (">=", VNative goeE) ]
+    , (">=", VNative goeE)
+    , ("*", VNative mulE) ]
 
 pop :: Sem' Value
 pop = gets _stack >>= \case
@@ -68,4 +69,11 @@ goeE = do
     t1 <- extract @Integer =<< pop
     t2 <- extract @Integer =<< pop
     let val = VAtom (EInt (if t2 >= t1 then 1 else 0))
+    (val <$) . modify $ \st -> st { _stack = push val (_stack st) }
+
+mulE :: Sem' Value
+mulE = do
+    t1 <- extract @Integer =<< pop
+    t2 <- extract @Integer =<< pop
+    let val = VAtom (EInt (t2 * t1))
     (val <$) . modify $ \st -> st { _stack = push val (_stack st) }

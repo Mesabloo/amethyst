@@ -1,5 +1,5 @@
 {-# LANGUAGE DataKinds, GADTs, TypeApplications, ScopedTypeVariables
-           , TypeSynonymInstances, FlexibleInstances #-}
+           , FlexibleInstances #-}
 
 module Amethyst.Interpreter.Types where
 
