@@ -1,4 +1,4 @@
-{-# LANGUAGE FlexibleContexts, OverloadedStrings, TypeApplications #-}
+{-# LANGUAGE FlexibleContexts, OverloadedStrings, TypeApplications, TemplateHaskell #-}
 
 module Amethyst.Language.Parser where
 
@@ -7,6 +7,7 @@ import qualified Text.Megaparsec.Char as MegaC
 import qualified Text.Megaparsec.Char.Lexer as MegaL
 import qualified Data.Text as Text
 import Data.Void
+import Control.Lens
 
 type Parser = Mega.Parsec Void Text.Text
 
@@ -22,6 +23,7 @@ data Lit
     | EString Text.Text
     | EChar Char
     deriving Show
+makePrisms ''Lit
 
 -------------------------------------------------------------------
 

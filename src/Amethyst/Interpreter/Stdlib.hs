@@ -34,21 +34,21 @@ push = (:)
 
 addE :: Sem' Value
 addE = do
-    i1 <- extract @Integer =<< pop
-    i2 <- extract @Integer =<< pop
+    i1 <- extract' @Integer =<< pop
+    i2 <- extract' @Integer =<< pop
     let val = VAtom (EInt (i2 + i1))
     val <$ (stack %= push val)
 
 assE :: Sem' Value
 assE = do
     e1 <- pop
-    Id i <- extract @Id =<< pop
+    Id i <- extract' @Id =<< pop
     e1 <$ (env %= Map.insert i e1)
 
 subE :: Sem' Value
 subE = do
-    i1 <- extract @Integer =<< pop
-    i2 <- extract @Integer =<< pop
+    i1 <- extract' @Integer =<< pop
+    i2 <- extract' @Integer =<< pop
     let val = VAtom (EInt (i2 - i1))
     val <$ (stack %= push val)
 
@@ -68,21 +68,21 @@ popE = pop
 
 goeE :: Sem' Value
 goeE = do
-    t1 <- extract @Integer =<< pop
-    t2 <- extract @Integer =<< pop
+    t1 <- extract' @Integer =<< pop
+    t2 <- extract' @Integer =<< pop
     let val = VAtom (EInt (if t2 >= t1 then 1 else 0))
     val <$ (stack %= push val)
 
 mulE :: Sem' Value
 mulE = do
-    t1 <- extract @Integer =<< pop
-    t2 <- extract @Integer =<< pop
+    t1 <- extract' @Integer =<< pop
+    t2 <- extract' @Integer =<< pop
     let val = VAtom (EInt (t2 * t1))
     val <$ (stack %= push val)
 
 loeE :: Sem' Value
 loeE = do
-    t1 <- extract @Integer =<< pop
-    t2 <- extract @Integer =<< pop
+    t1 <- extract' @Integer =<< pop
+    t2 <- extract' @Integer =<< pop
     let val = VAtom (EInt (if t2 <= t1 then 1 else 0))
     val <$ (stack %= push val)

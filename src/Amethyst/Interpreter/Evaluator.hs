@@ -64,7 +64,7 @@ runEval sem s = sem & runError & runState s & runM
 
 ifE :: Sem' Value
 ifE = do
-    cond' <- extract @Integer =<< pop
+    cond' <- extract' @Integer =<< pop
     _then <- pop
     _else <- pop
-    eval =<< extract @Block (if cond' /= 0 then _then else _else)
+    eval =<< extract' @Block (if cond' /= 0 then _then else _else)

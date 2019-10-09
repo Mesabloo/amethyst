@@ -1,6 +1,6 @@
 {-# LANGUAGE DataKinds, GADTs, TypeApplications, ScopedTypeVariables
            , FlexibleInstances, TemplateHaskell, MultiParamTypeClasses
-           , FlexibleContexts, UndecidableInstances, TypeOperators #-}
+           , FlexibleContexts, UndecidableInstances, TypeOperators, LambdaCase #-}
 
 module Amethyst.Interpreter.Types where
 
@@ -19,9 +19,6 @@ type EvalError = String
 type Block = [Expr]
 newtype Id = Id Text.Text
 
-type Sem' = Sem '[Error EvalError, State EvalState, Embed IO]
-type Eval a = Block -> Sem' a
-
 data Value
     = VAtom Lit
     | VId Id
@@ -31,40 +28,43 @@ data Value
 data EvalState = EvalState
     { _stack :: [Value]
     , _env :: Map.Map Text.Text Value }
+
+type Effects = '[Error EvalError, State EvalState, Embed IO]
+type Sem' = Sem Effects
+type Eval a = Block -> Sem' a
+
 makeLenses ''EvalState
+makePrisms ''Value
 
 -----------------------------------------------------------------------
 
-class Typeable a => Extractable a where
-    {-# MINIMAL extract #-}
-    extract :: Value -> Sem' a
+class Extractable a where
+    extract :: Prism' Value a
 
-    error' :: Value -> Sem' a
-    error' v = throw @EvalError (show v <> " is not a " <> show (typeRep (Proxy @a)))
+extract' :: forall a. (Extractable a, Typeable a) => Value -> Sem' a
+extract' v = case v ^? extract of
+    Just x  -> pure x
+    Nothing -> throw @EvalError (show v <> " is not a " <> show (typeRep (Proxy @a)))
 
 instance Extractable Integer where
-    extract (VAtom (EInt i)) = pure i
-    extract v = error' v
+    extract v = v & (_VAtom . _EInt)
 
 instance Extractable Text.Text where
-    extract (VAtom (EString s)) = pure s
-    extract v = error' v
+    extract v = v & (_VAtom . _EString)
 
 instance Extractable Id where
-    extract (VId i) = pure i
-    extract v = error' v
+    extract v = v & _VId
 
 instance Extractable Block where
-    extract (VBlock vs) = pure vs
-    extract v = error' v
+    extract v = v & _VBlock
 
 instance Extractable Char where
-    extract (VAtom (EChar c)) = pure c
-    extract v = error' v
+    extract v = v & (_VAtom . _EChar)
 
 instance Extractable Double where
-    extract (VAtom (EFloat f)) = pure f
-    extract v = error' v
+    extract v = v & (_VAtom . _EFloat)
+
+--------------------------------------------------------------------------------
 
 instance Show Value where
     show (VNative _) = ""
