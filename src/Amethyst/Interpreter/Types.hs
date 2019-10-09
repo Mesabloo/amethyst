@@ -23,15 +23,14 @@ data Value
     = VAtom Lit
     | VId Id
     | VBlock Block
-    | VNative (Sem' Value)
+    | VNative (Eval ())
 
 data EvalState = EvalState
     { _stack :: [Value]
     , _env :: Map.Map Text.Text Value }
 
 type Effects = '[Error EvalError, State EvalState, Embed IO]
-type Sem' = Sem Effects
-type Eval a = Block -> Sem' a
+type Eval = Sem Effects
 
 makeLenses ''EvalState
 makePrisms ''Value
@@ -41,7 +40,7 @@ makePrisms ''Value
 class Extractable a where
     extract :: Prism' Value a
 
-extract' :: forall a. (Extractable a, Typeable a) => Value -> Sem' a
+extract' :: forall a. (Extractable a, Typeable a) => Value -> Eval a
 extract' v = case v ^? extract of
     Just x  -> pure x
     Nothing -> throw @EvalError (show v <> " is not a " <> show (typeRep (Proxy @a)))
@@ -82,6 +81,6 @@ instance Show EvalState where
 
 --------------------------------------------------------------------------------
 
-instance MonadState EvalState Sem' where
+instance MonadState EvalState Eval where
     get = Polysemy.State.get
     put = Polysemy.State.put

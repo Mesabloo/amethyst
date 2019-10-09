@@ -15,6 +15,7 @@ import Data.Function ((&))
 import Amethyst.Interpreter.Stdlib
 import Amethyst.Interpreter.Types
 import Control.Lens
+import Data.Maybe
 
 initEvalState :: EvalState
 initEvalState = EvalState
@@ -25,44 +26,39 @@ initEvalState = EvalState
 
 ---------------------------------------------------------------------
 
-eval :: Eval Value
-eval [] = join (stack `uses` top)
-eval (x:xs) = foldl ((. exec) . (*>)) (exec x) xs
+eval :: Block -> Eval ()
+eval [] = pure ()
+eval (x:xs) = exec x *> eval xs
   where
-    exec = \case
-        EAtom a ->
-            let val = VAtom a in val <$ (stack %= push val)
-        EId (Just _) name ->
-            let val = VId (Id name) in val <$ (stack %= push val)
-        EId Nothing name ->
-            env `uses` Map.lookup name >>= \case
-                Just x -> evalVal x
-                Nothing -> throw @EvalError ("Function `" <> Text.unpack name <> "` not found.")
-        EBlock es ->
-            let b = VBlock es in b <$ (stack %= push b)
+    exec (EAtom a) = stack %= (VAtom a  :)
+    exec (EId (Just _) name) = stack %= (VId (Id name) :)
+    exec (EId Nothing name) =
+        let err = throw @EvalError ("Function `" <> Text.unpack name <> "` not found.")
+        in env `uses` Map.lookup name >>= maybe err evalVal
+    exec (EBlock es) = stack %= (VBlock es :)
 
-evalVal :: Value -> Sem' Value
+evalVal :: Value -> Eval ()
 evalVal (VNative f) = f
-evalVal (VBlock vs) = local (eval vs)
-evalVal v = v <$ (stack %= push v)
+evalVal (VBlock vs) = isolated (eval vs)
+evalVal v = stack %= (v :)
 
-local :: Sem' a -> Sem' a
-local action = do
+isolated :: Eval a -> Eval a
+isolated action = do
     e <- use env
     action <* (env .= e)
 
-top :: [Value] -> Sem' Value
+top :: [Value] -> Eval Value
 top [] = throw @EvalError "Empty stack when using `top`."
 top (x:xs) = pure x
 
 ----------------------------------------------------------------------
 
-runEval :: Sem' Value -> EvalState -> IO (EvalState, Either EvalError Value)
+runEval :: Eval a -> EvalState -> IO (EvalState, Either EvalError a)
 runEval sem s = sem & runError & runState s & runM
 
 ----------------------------------------------------------------------
 
-ifE :: Sem' Value
+ifE :: Eval ()
 ifE = do
     cond' <- extract' @Integer =<< pop
     _then <- pop

@@ -14,9 +14,9 @@ main = case Mega.runParser program "test" fact of
     Left e -> putStrLn (Mega.errorBundlePretty e)
     Right p ->
         runEval (eval p) initEvalState
-        >>= \(s, x) -> print (s ^. stack) *> case x of
+        >>= \(s, x) -> case x of
             Left e -> putStrLn e
-            Right x -> print x
+            Right x -> print (s ^. stack)
 
 fib = "\\fib {dup 2 >= {} swap {dup 2 - fib swap 1 - fib +} swap ?:} = 2 fib"
 fact = "\\fact {dup 1 <= {dup 1 - fact *} swap {pop 1} swap ?:} = 5 fact"

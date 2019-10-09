@@ -23,66 +23,62 @@ defaultEnv = Map.fromList
     , ("*", VNative mulE)
     , ("<=", VNative loeE) ]
 
-pop :: Sem' Value
+pop :: Eval Value
 pop = use stack >>= \case
     x:xs -> x <$ (stack .= xs)
     []   -> throw @EvalError "Cannot pop an empty stack."
 
-push :: Value -> [Value] -> [Value]
-push = (:)
-{-# INLINE push #-}
-
-addE :: Sem' Value
+addE :: Eval ()
 addE = do
     i1 <- extract' @Integer =<< pop
     i2 <- extract' @Integer =<< pop
     let val = VAtom (EInt (i2 + i1))
-    val <$ (stack %= push val)
+    stack %= (val :)
 
-assE :: Sem' Value
+assE :: Eval ()
 assE = do
     e1 <- pop
     Id i <- extract' @Id =<< pop
-    e1 <$ (env %= Map.insert i e1)
+    env %= Map.insert i e1
 
-subE :: Sem' Value
+subE :: Eval ()
 subE = do
     i1 <- extract' @Integer =<< pop
     i2 <- extract' @Integer =<< pop
     let val = VAtom (EInt (i2 - i1))
-    val <$ (stack %= push val)
+    stack %= (val :)
 
-swapE :: Sem' Value
+swapE :: Eval ()
 swapE = do
     t1 <- pop
     t2 <- pop
-    t2 <$ (stack %= (push t2 . push t1))
+    stack %= ([t2, t1] <>)
 
-dupE :: Sem' Value
+dupE :: Eval ()
 dupE = do
     t <- pop
-    t <$ (stack %= (push t . push t))
+    stack %= ([t, t] <>)
 
-popE :: Sem' Value
-popE = pop
+popE :: Eval ()
+popE = () <$ pop
 
-goeE :: Sem' Value
+goeE :: Eval ()
 goeE = do
     t1 <- extract' @Integer =<< pop
     t2 <- extract' @Integer =<< pop
     let val = VAtom (EInt (if t2 >= t1 then 1 else 0))
-    val <$ (stack %= push val)
+    stack %= (val :)
 
-mulE :: Sem' Value
+mulE :: Eval ()
 mulE = do
     t1 <- extract' @Integer =<< pop
     t2 <- extract' @Integer =<< pop
     let val = VAtom (EInt (t2 * t1))
-    val <$ (stack %= push val)
+    stack %= (val :)
 
-loeE :: Sem' Value
+loeE :: Eval ()
 loeE = do
     t1 <- extract' @Integer =<< pop
     t2 <- extract' @Integer =<< pop
     let val = VAtom (EInt (if t2 <= t1 then 1 else 0))
-    val <$ (stack %= push val)
+    stack %= (val :)
