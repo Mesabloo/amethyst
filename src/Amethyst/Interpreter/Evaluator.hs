@@ -27,19 +27,19 @@ initEvalState = EvalState
 
 eval :: Eval Value
 eval [] = join (stack `uses` top)
-eval (x:xs) =
-    let exec = \case
-            EAtom a ->
-                let val = VAtom a in val <$ (stack %= push val)
-            EId (Just _) name ->
-                let val = VId (Id name) in val <$ (stack %= push val)
-            EId Nothing name ->
-                env `uses` Map.lookup name >>= \case
-                    Just x -> evalVal x
-                    Nothing -> throw @EvalError ("Function `" <> Text.unpack name <> "` not found.")
-            EBlock es ->
-                let b = VBlock es in b <$ (stack %= push b)
-    in foldl ((. exec) . (*>)) (exec x) xs
+eval (x:xs) = foldl ((. exec) . (*>)) (exec x) xs
+  where
+    exec = \case
+        EAtom a ->
+            let val = VAtom a in val <$ (stack %= push val)
+        EId (Just _) name ->
+            let val = VId (Id name) in val <$ (stack %= push val)
+        EId Nothing name ->
+            env `uses` Map.lookup name >>= \case
+                Just x -> evalVal x
+                Nothing -> throw @EvalError ("Function `" <> Text.unpack name <> "` not found.")
+        EBlock es ->
+            let b = VBlock es in b <$ (stack %= push b)
 
 evalVal :: Value -> Sem' Value
 evalVal (VNative f) = f
