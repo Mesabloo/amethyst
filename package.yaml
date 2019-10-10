@@ -27,6 +27,8 @@ dependencies:
 - text
 - containers
 - mtl
+- haskeline
+- ansi-terminal
 
 library:
   source-dirs: src
