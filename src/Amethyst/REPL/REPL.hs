@@ -20,7 +20,7 @@ runREPL :: REPL a -> IO (Either REPLError a)
 runREPL r = runExceptT (evalStateT (runInputT defaultSettings r) initEvalState)
 
 launchREPL :: REPL ()
-launchREPL = withInterrupt (handleInterrupt launchREPL (forever run))
+launchREPL = forever (withInterrupt (handleInterrupt launchREPL run))
 
 run :: REPL ()
 run = do
