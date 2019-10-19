@@ -8,6 +8,7 @@ import Amethyst.Interpreter.Types
 import Amethyst.Language.Parser
 import Polysemy.Error
 import Polysemy.State
+import Polysemy.Embed
 import Control.Monad
 import Control.Lens
 
@@ -21,7 +22,8 @@ defaultEnv = Map.fromList
     , ("pop", VNative popE)
     , (">=", VNative goeE)
     , ("*", VNative mulE)
-    , ("<=", VNative loeE) ]
+    , ("<=", VNative loeE)
+    , ("print", VNative printE) ]
 
 pop :: Eval Value
 pop = use stack >>= \case
@@ -82,3 +84,7 @@ loeE = do
     t2 <- extract' @Integer =<< pop
     let val = VAtom (EInt (if t2 <= t1 then 1 else 0))
     stack %= (val :)
+
+printE :: Eval ()
+printE =
+    embed . print =<< pop
